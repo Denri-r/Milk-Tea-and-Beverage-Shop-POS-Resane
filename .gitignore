@@ -39,3 +39,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Local point-of-sale data and test artifacts
+/data/
+/test-results/
+/playwright-report/
+/artifacts/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
