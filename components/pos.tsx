@@ -355,6 +355,14 @@ export default function POS({ products }: { products: Product[] }) {
       setPaymentError("Add at least one drink before checking out.");
       return;
     }
+    if (
+      !pendingRequest &&
+      !window.confirm(
+        `Confirm this order?\n\nItems: ${itemCount}\nTotal: ${money(total)}\nCash received: ${money(validation.cents!)}\nChange: ${money(validation.cents! - total)}\n\nSelect OK to complete the payment, or Cancel to review the order.`,
+      )
+    ) {
+      return;
+    }
     paymentLock.current = true;
     setPaying(true);
     setPaymentError("");
