@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import Image from "next/image";
+import PaymentConfirmation from "@/components/payment-confirmation";
 import * as Dialog from "@radix-ui/react-dialog";
 import {
   ArrowRight,
@@ -42,6 +43,8 @@ function Modal({
   onClose,
   children,
   className = "",
+  role = "dialog",
+  dismissible = true,
 }: {
   title: string;
   description: string;
@@ -49,23 +52,38 @@ function Modal({
   onClose: () => void;
   children: ReactNode;
   className?: string;
+  role?: "dialog" | "alertdialog";
+  dismissible?: boolean;
 }) {
   return (
     <Dialog.Root
       open={open}
       onOpenChange={(value) => {
-        if (!value) onClose();
+        if (!value && dismissible) onClose();
       }}
     >
       <Dialog.Portal>
         <Dialog.Overlay className="modal-overlay" />
-        <Dialog.Content className={`modal ${className}`}>
+        <Dialog.Content
+          role={role}
+          className={`modal ${className}`}
+          onEscapeKeyDown={(event) => {
+            if (!dismissible) event.preventDefault();
+          }}
+          onPointerDownOutside={(event) => {
+            if (!dismissible || role === "alertdialog") event.preventDefault();
+          }}
+        >
           <div className="modal-heading">
             <div>
               <Dialog.Title>{title}</Dialog.Title>
               <Dialog.Description>{description}</Dialog.Description>
             </div>
-            <Dialog.Close className="icon-button" aria-label="Close dialog">
+            <Dialog.Close
+              className="icon-button"
+              aria-label="Close dialog"
+              disabled={!dismissible}
+            >
               <X size={22} />
             </Dialog.Close>
           </div>
@@ -169,6 +187,7 @@ export default function POS({ products }: { products: Product[] }) {
   const [ice, setIce] = useState("Regular ice");
   const [cash, setCash] = useState("");
   const [paymentOpen, setPaymentOpen] = useState(false);
+  const [confirmingPayment, setConfirmingPayment] = useState(false);
   const [paymentError, setPaymentError] = useState("");
   const [paying, setPaying] = useState(false);
   const paymentLock = useRef(false);
@@ -272,6 +291,7 @@ export default function POS({ products }: { products: Product[] }) {
     setReceipt(null);
     setReceiptOpen(false);
     setPaymentOpen(false);
+    setConfirmingPayment(false);
     setPaymentError("");
     setConfirmReset(false);
     setCustomizing(null);
@@ -344,7 +364,7 @@ export default function POS({ products }: { products: Product[] }) {
         .filter((item) => item.quantity > 0),
     );
   }
-  async function pay() {
+  async function pay(confirmed = false) {
     if (paymentLock.current) return;
     const validation = validateCash(cash, total);
     if (validation.error) {
@@ -355,12 +375,10 @@ export default function POS({ products }: { products: Product[] }) {
       setPaymentError("Add at least one drink before checking out.");
       return;
     }
-    if (
-      !pendingRequest &&
-      !window.confirm(
-        `Confirm this order?\n\nItems: ${itemCount}\nTotal: ${money(total)}\nCash received: ${money(validation.cents!)}\nChange: ${money(validation.cents! - total)}\n\nSelect OK to complete the payment, or Cancel to review the order.`,
-      )
-    ) {
+    if (!pendingRequest && !confirmed) {
+      setPaymentError("");
+      setNotice("");
+      setConfirmingPayment(true);
       return;
     }
     paymentLock.current = true;
@@ -389,6 +407,7 @@ export default function POS({ products }: { products: Product[] }) {
       setReceipt(result);
       setReceiptOpen(true);
       setPaymentOpen(false);
+      setConfirmingPayment(false);
       setPendingRequest(null);
       setOrders((current) => [
         result,
@@ -1145,101 +1164,131 @@ export default function POS({ products }: { products: Product[] }) {
       <Modal
         open={paymentOpen}
         onClose={() => {
-          if (!paying) setPaymentOpen(false);
+          if (!paying) {
+            if (confirmingPayment) setConfirmingPayment(false);
+            else setPaymentOpen(false);
+          }
         }}
-        title="Let’s settle up."
-        description={`${itemCount} ${itemCount === 1 ? "item" : "items"} · ${orderType.toLowerCase()} · Cash payment`}
-        className="payment-modal"
+        title={confirmingPayment ? "Confirm this order?" : "Let’s settle up."}
+        description={
+          confirmingPayment
+            ? "One last look before we make it official."
+            : `${itemCount} ${itemCount === 1 ? "item" : "items"} · ${orderType.toLowerCase()} · Cash payment`
+        }
+        className={
+          confirmingPayment
+            ? "payment-modal confirmation-modal"
+            : "payment-modal"
+        }
+        role={confirmingPayment ? "alertdialog" : "dialog"}
+        dismissible={!paying}
       >
-        <form
-          noValidate
-          onSubmit={(event) => {
-            event.preventDefault();
-            void pay();
-          }}
-        >
-          <div className="payment-total">
-            <span>Total to pay</span>
-            <strong>{money(total)}</strong>
-          </div>
-          <label className="cash-label" htmlFor="cash">
-            Cash received
-          </label>
-          <div className={`cash-input ${paymentError ? "invalid" : ""}`}>
-            <span>₱</span>
-            <input
-              id="cash"
-              type="text"
-              inputMode="decimal"
-              autoComplete="off"
-              placeholder="0.00"
-              value={cash}
-              disabled={paying || !!pendingRequest}
-              aria-invalid={!!paymentError}
-              aria-describedby={paymentError ? "payment-error" : "cash-hint"}
-              onChange={(event) => {
-                setCash(event.target.value);
-                setPaymentError("");
-              }}
-            />
-          </div>
-          <p className="field-hint" id="cash-hint">
-            Enter the amount handed to you by the customer.
-          </p>
-          <div className="cash-presets">
-            <button
-              type="button"
-              disabled={paying || !!pendingRequest}
-              onClick={() => {
-                setCash((total / 100).toFixed(2));
-                setPaymentError("");
-              }}
-            >
-              Exact amount
-            </button>
-            {[100, 200, 500, 1000]
-              .filter((value) => value * 100 >= total)
-              .slice(0, 3)
-              .map((value) => (
-                <button
-                  type="button"
-                  key={value}
-                  disabled={paying || !!pendingRequest}
-                  onClick={() => {
-                    setCash(String(value));
-                    setPaymentError("");
-                  }}
-                >
-                  ₱{value}
-                </button>
-              ))}
-          </div>
-          {paymentError && (
-            <p className="field-error" id="payment-error" role="alert">
-              <Info size={19} />
-              {paymentError}
+        {confirmingPayment ? (
+          <PaymentConfirmation
+            total={total}
+            paid={payment.cents ?? 0}
+            itemCount={itemCount}
+            customer={customer}
+            orderType={orderType}
+            paying={paying}
+            retrying={!!pendingRequest}
+            error={paymentError}
+            onBack={() => setConfirmingPayment(false)}
+            onConfirm={() => {
+              void pay(true);
+            }}
+          />
+        ) : (
+          <form
+            noValidate
+            onSubmit={(event) => {
+              event.preventDefault();
+              void pay();
+            }}
+          >
+            <div className="payment-total">
+              <span>Total to pay</span>
+              <strong>{money(total)}</strong>
+            </div>
+            <label className="cash-label" htmlFor="cash">
+              Cash received
+            </label>
+            <div className={`cash-input ${paymentError ? "invalid" : ""}`}>
+              <span>₱</span>
+              <input
+                id="cash"
+                type="text"
+                inputMode="decimal"
+                autoComplete="off"
+                placeholder="0.00"
+                value={cash}
+                disabled={paying || !!pendingRequest}
+                aria-invalid={!!paymentError}
+                aria-describedby={paymentError ? "payment-error" : "cash-hint"}
+                onChange={(event) => {
+                  setCash(event.target.value);
+                  setPaymentError("");
+                }}
+              />
+            </div>
+            <p className="field-hint" id="cash-hint">
+              Enter the amount handed to you by the customer.
             </p>
-          )}
-          <div className="change-preview">
-            <span>Change to return</span>
-            <strong>
-              {payment.cents !== undefined
-                ? money(payment.cents - total)
-                : money(0)}
-            </strong>
-          </div>
-          <button className="primary full" type="submit" disabled={paying}>
-            {paying
-              ? "Saving payment..."
-              : pendingRequest
-                ? "Retry payment safely"
-                : "Confirm payment"}
-            {!paying && <CheckCircle size={21} />}
-          </button>
-          <p className="checkout-hint">
-            Confirm once you have received the cash.
-          </p>
-        </form>
+            <div className="cash-presets">
+              <button
+                type="button"
+                disabled={paying || !!pendingRequest}
+                onClick={() => {
+                  setCash((total / 100).toFixed(2));
+                  setPaymentError("");
+                }}
+              >
+                Exact amount
+              </button>
+              {[100, 200, 500, 1000]
+                .filter((value) => value * 100 >= total)
+                .slice(0, 3)
+                .map((value) => (
+                  <button
+                    type="button"
+                    key={value}
+                    disabled={paying || !!pendingRequest}
+                    onClick={() => {
+                      setCash(String(value));
+                      setPaymentError("");
+                    }}
+                  >
+                    ₱{value}
+                  </button>
+                ))}
+            </div>
+            {paymentError && (
+              <p className="field-error" id="payment-error" role="alert">
+                <Info size={19} />
+                {paymentError}
+              </p>
+            )}
+            <div className="change-preview">
+              <span>Change to return</span>
+              <strong>
+                {payment.cents !== undefined
+                  ? money(payment.cents - total)
+                  : money(0)}
+              </strong>
+            </div>
+            <button className="primary full" type="submit" disabled={paying}>
+              {paying
+                ? "Saving payment..."
+                : pendingRequest
+                  ? "Retry payment safely"
+                  : "Confirm payment"}
+              {!paying && <CheckCircle size={21} />}
+            </button>
+            <p className="checkout-hint">
+              Confirm once you have received the cash.
+            </p>
+          </form>
+        )}
       </Modal>
       <Modal
         open={receiptOpen && !!receipt}

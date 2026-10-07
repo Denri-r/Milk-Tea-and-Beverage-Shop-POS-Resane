@@ -1213,6 +1213,130 @@ input::placeholder {
   border-color: var(--green);
   font-weight: 700;
 }
+.confirmation-modal .modal-heading {
+  margin-bottom: 25px;
+}
+.confirmation-order {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 22px;
+}
+.confirmation-icon {
+  width: 50px;
+  height: 50px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  background: var(--green-soft);
+  color: var(--green);
+  flex-shrink: 0;
+}
+.confirmation-order > div {
+  min-width: 0;
+  flex: 1;
+}
+.confirmation-order strong {
+  display: block;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.confirmation-order div > span {
+  display: block;
+  margin-top: 5px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.confirmation-method {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.confirmation-summary {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg);
+  padding: 22px;
+}
+.confirmation-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.confirmation-total > span {
+  font-size: 12px;
+  color: var(--muted);
+}
+.confirmation-total strong {
+  font-size: 32px;
+  letter-spacing: -1px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.confirmation-amounts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin: 19px 0 0;
+  padding-top: 19px;
+  border-top: 1px dashed var(--border);
+}
+.confirmation-amounts dt {
+  font-size: 11px;
+  color: var(--muted);
+}
+.confirmation-amounts dd {
+  margin: 7px 0 0;
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: -0.4px;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.confirmation-amounts > div:last-child dd {
+  color: var(--green);
+}
+.confirmation-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin-top: 20px;
+  font-size: 11px;
+  line-height: 1.8;
+  color: var(--muted);
+}
+.confirmation-note svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--green);
+}
+.confirmation-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 10px;
+  margin-top: 25px;
+}
+.confirmation-buttons button {
+  height: 46px;
+  padding: 0 10px;
+  font-size: 12px;
+  gap: 7px;
+}
+@media (max-width: 380px) {
+  .confirmation-buttons {
+    grid-template-columns: 1fr;
+  }
+  .confirmation-total strong {
+    font-size: 28px;
+  }
+  .confirmation-amounts {
+    grid-template-columns: 1fr;
+  }
+}
 .payment-total {
   text-align: center;
   background: var(--green-soft);

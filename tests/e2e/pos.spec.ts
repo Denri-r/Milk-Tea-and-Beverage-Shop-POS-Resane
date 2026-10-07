@@ -53,23 +53,41 @@ test("all required cart, payment, receipt, and reset features work in the browse
   }
   await page.getByLabel("Cash received", { exact: true }).fill("100.50");
   await expect(page.locator(".change-preview")).toContainText("₱21.50");
-  const confirmation = page.waitForEvent("dialog");
-  page.once("dialog", (dialog) => dialog.dismiss());
   await page
     .getByRole("button", { name: "Confirm payment", exact: true })
     .click();
-  const alert = await confirmation;
-  expect(alert.type()).toBe("confirm");
-  expect(alert.message()).toContain("Confirm this order?");
-  expect(alert.message()).toContain("Total: ₱79.00");
-  expect(alert.message()).toContain("Cash received: ₱100.50");
-  expect(alert.message()).toContain("Change: ₱21.50");
+  const confirmation = page.getByRole("alertdialog", {
+    name: "Confirm this order?",
+  });
+  await expect(confirmation).toBeVisible();
+  await expect(confirmation.locator(".confirmation-total")).toContainText(
+    "₱79.00",
+  );
+  await expect(confirmation.locator(".confirmation-amounts")).toContainText(
+    "₱100.50",
+  );
+  await expect(confirmation.locator(".confirmation-amounts")).toContainText(
+    "₱21.50",
+  );
+  await expect(
+    confirmation.getByRole("button", { name: "Go back" }),
+  ).toBeFocused();
+  await page.screenshot({ path: "artifacts/confirmation-desktop.png" });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({ path: "artifacts/confirmation-mobile.png" });
+  await expect(
+    confirmation.getByRole("button", { name: "Confirm payment" }),
+  ).toBeInViewport();
+  await confirmation.getByRole("button", { name: "Go back" }).click();
   await expect(page.getByLabel("Cash received", { exact: true })).toHaveValue(
     "100.50",
   );
   expect(await (await page.request.get("/api/orders")).json()).toEqual([]);
-  page.once("dialog", (dialog) => dialog.accept());
+  await page.setViewportSize({ width: 1440, height: 1000 });
   await page
+    .getByRole("button", { name: "Confirm payment", exact: true })
+    .click();
+  await confirmation
     .getByRole("button", { name: "Confirm payment", exact: true })
     .click();
   await expect(
