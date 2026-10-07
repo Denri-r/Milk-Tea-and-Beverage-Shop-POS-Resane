@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import Image from "next/image";
-import PaymentConfirmation from "@/components/payment-confirmation";
+import PaymentSuccess from "@/components/payment-success";
 import * as Dialog from "@radix-ui/react-dialog";
 import {
   ArrowRight,
@@ -45,6 +45,7 @@ function Modal({
   className = "",
   role = "dialog",
   dismissible = true,
+  icon,
 }: {
   title: string;
   description: string;
@@ -54,6 +55,7 @@ function Modal({
   className?: string;
   role?: "dialog" | "alertdialog";
   dismissible?: boolean;
+  icon?: ReactNode;
 }) {
   return (
     <Dialog.Root
@@ -74,6 +76,7 @@ function Modal({
             if (!dismissible || role === "alertdialog") event.preventDefault();
           }}
         >
+          {icon}
           <div className="modal-heading">
             <div>
               <Dialog.Title>{title}</Dialog.Title>
@@ -187,7 +190,6 @@ export default function POS({ products }: { products: Product[] }) {
   const [ice, setIce] = useState("Regular ice");
   const [cash, setCash] = useState("");
   const [paymentOpen, setPaymentOpen] = useState(false);
-  const [confirmingPayment, setConfirmingPayment] = useState(false);
   const [paymentError, setPaymentError] = useState("");
   const [paying, setPaying] = useState(false);
   const paymentLock = useRef(false);
@@ -196,6 +198,7 @@ export default function POS({ products }: { products: Product[] }) {
   );
   const [receipt, setReceipt] = useState<Receipt | null>(null);
   const [receiptOpen, setReceiptOpen] = useState(false);
+  const [showPaymentSuccess, setShowPaymentSuccess] = useState(false);
   const [historyReceipt, setHistoryReceipt] = useState<Receipt | null>(null);
   const [orders, setOrders] = useState<Receipt[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -290,8 +293,8 @@ export default function POS({ products }: { products: Product[] }) {
     setOrderType("Takeaway");
     setReceipt(null);
     setReceiptOpen(false);
+    setShowPaymentSuccess(false);
     setPaymentOpen(false);
-    setConfirmingPayment(false);
     setPaymentError("");
     setConfirmReset(false);
     setCustomizing(null);
@@ -364,7 +367,7 @@ export default function POS({ products }: { products: Product[] }) {
         .filter((item) => item.quantity > 0),
     );
   }
-  async function pay(confirmed = false) {
+  async function pay() {
     if (paymentLock.current) return;
     const validation = validateCash(cash, total);
     if (validation.error) {
@@ -373,12 +376,6 @@ export default function POS({ products }: { products: Product[] }) {
     }
     if (!cart.length) {
       setPaymentError("Add at least one drink before checking out.");
-      return;
-    }
-    if (!pendingRequest && !confirmed) {
-      setPaymentError("");
-      setNotice("");
-      setConfirmingPayment(true);
       return;
     }
     paymentLock.current = true;
@@ -405,9 +402,10 @@ export default function POS({ products }: { products: Product[] }) {
         throw new Error(result.error || "Payment could not be saved.");
       }
       setReceipt(result);
+      setShowPaymentSuccess(true);
       setReceiptOpen(true);
       setPaymentOpen(false);
-      setConfirmingPayment(false);
+      setNotice("");
       setPendingRequest(null);
       setOrders((current) => [
         result,
@@ -1035,7 +1033,10 @@ export default function POS({ products }: { products: Product[] }) {
                     </div>
                     <button
                       className="secondary full"
-                      onClick={() => setReceiptOpen(true)}
+                      onClick={() => {
+                        setShowPaymentSuccess(false);
+                        setReceiptOpen(true);
+                      }}
                     >
                       View receipt
                       <ReceiptIcon size={18} />
@@ -1164,161 +1165,158 @@ export default function POS({ products }: { products: Product[] }) {
       <Modal
         open={paymentOpen}
         onClose={() => {
-          if (!paying) {
-            if (confirmingPayment) setConfirmingPayment(false);
-            else setPaymentOpen(false);
-          }
+          if (!paying) setPaymentOpen(false);
         }}
-        title={confirmingPayment ? "Confirm this order?" : "Let’s settle up."}
-        description={
-          confirmingPayment
-            ? "One last look before we make it official."
-            : `${itemCount} ${itemCount === 1 ? "item" : "items"} · ${orderType.toLowerCase()} · Cash payment`
-        }
-        className={
-          confirmingPayment
-            ? "payment-modal confirmation-modal"
-            : "payment-modal"
-        }
-        role={confirmingPayment ? "alertdialog" : "dialog"}
+        title="Let’s settle up."
+        description={`${itemCount} ${itemCount === 1 ? "item" : "items"} · ${orderType.toLowerCase()} · Cash payment`}
+        className="payment-modal"
         dismissible={!paying}
       >
-        {confirmingPayment ? (
-          <PaymentConfirmation
-            total={total}
-            paid={payment.cents ?? 0}
-            itemCount={itemCount}
-            customer={customer}
-            orderType={orderType}
-            paying={paying}
-            retrying={!!pendingRequest}
-            error={paymentError}
-            onBack={() => setConfirmingPayment(false)}
-            onConfirm={() => {
-              void pay(true);
-            }}
-          />
-        ) : (
-          <form
-            noValidate
-            onSubmit={(event) => {
-              event.preventDefault();
-              void pay();
-            }}
-          >
-            <div className="payment-total">
-              <span>Total to pay</span>
-              <strong>{money(total)}</strong>
-            </div>
-            <label className="cash-label" htmlFor="cash">
-              Cash received
-            </label>
-            <div className={`cash-input ${paymentError ? "invalid" : ""}`}>
-              <span>₱</span>
-              <input
-                id="cash"
-                type="text"
-                inputMode="decimal"
-                autoComplete="off"
-                placeholder="0.00"
-                value={cash}
-                disabled={paying || !!pendingRequest}
-                aria-invalid={!!paymentError}
-                aria-describedby={paymentError ? "payment-error" : "cash-hint"}
-                onChange={(event) => {
-                  setCash(event.target.value);
-                  setPaymentError("");
-                }}
-              />
-            </div>
-            <p className="field-hint" id="cash-hint">
-              Enter the amount handed to you by the customer.
-            </p>
-            <div className="cash-presets">
-              <button
-                type="button"
-                disabled={paying || !!pendingRequest}
-                onClick={() => {
-                  setCash((total / 100).toFixed(2));
-                  setPaymentError("");
-                }}
-              >
-                Exact amount
-              </button>
-              {[100, 200, 500, 1000]
-                .filter((value) => value * 100 >= total)
-                .slice(0, 3)
-                .map((value) => (
-                  <button
-                    type="button"
-                    key={value}
-                    disabled={paying || !!pendingRequest}
-                    onClick={() => {
-                      setCash(String(value));
-                      setPaymentError("");
-                    }}
-                  >
-                    ₱{value}
-                  </button>
-                ))}
-            </div>
-            {paymentError && (
-              <p className="field-error" id="payment-error" role="alert">
-                <Info size={19} />
-                {paymentError}
-              </p>
-            )}
-            <div className="change-preview">
-              <span>Change to return</span>
-              <strong>
-                {payment.cents !== undefined
-                  ? money(payment.cents - total)
-                  : money(0)}
-              </strong>
-            </div>
-            <button className="primary full" type="submit" disabled={paying}>
-              {paying
-                ? "Saving payment..."
-                : pendingRequest
-                  ? "Retry payment safely"
-                  : "Confirm payment"}
-              {!paying && <CheckCircle size={21} />}
+        <form
+          noValidate
+          onSubmit={(event) => {
+            event.preventDefault();
+            void pay();
+          }}
+        >
+          <div className="payment-total">
+            <span>Total to pay</span>
+            <strong>{money(total)}</strong>
+          </div>
+          <label className="cash-label" htmlFor="cash">
+            Cash received
+          </label>
+          <div className={`cash-input ${paymentError ? "invalid" : ""}`}>
+            <span>₱</span>
+            <input
+              id="cash"
+              type="text"
+              inputMode="decimal"
+              autoComplete="off"
+              placeholder="0.00"
+              value={cash}
+              disabled={paying || !!pendingRequest}
+              aria-invalid={!!paymentError}
+              aria-describedby={paymentError ? "payment-error" : "cash-hint"}
+              onChange={(event) => {
+                setCash(event.target.value);
+                setPaymentError("");
+              }}
+            />
+          </div>
+          <p className="field-hint" id="cash-hint">
+            Enter the amount handed to you by the customer.
+          </p>
+          <div className="cash-presets">
+            <button
+              type="button"
+              disabled={paying || !!pendingRequest}
+              onClick={() => {
+                setCash((total / 100).toFixed(2));
+                setPaymentError("");
+              }}
+            >
+              Exact amount
             </button>
-            <p className="checkout-hint">
-              Confirm once you have received the cash.
+            {[100, 200, 500, 1000]
+              .filter((value) => value * 100 >= total)
+              .slice(0, 3)
+              .map((value) => (
+                <button
+                  type="button"
+                  key={value}
+                  disabled={paying || !!pendingRequest}
+                  onClick={() => {
+                    setCash(String(value));
+                    setPaymentError("");
+                  }}
+                >
+                  ₱{value}
+                </button>
+              ))}
+          </div>
+          {paymentError && (
+            <p className="field-error" id="payment-error" role="alert">
+              <Info size={19} />
+              {paymentError}
             </p>
-          </form>
-        )}
+          )}
+          <div className="change-preview">
+            <span>Change to return</span>
+            <strong>
+              {payment.cents !== undefined
+                ? money(payment.cents - total)
+                : money(0)}
+            </strong>
+          </div>
+          <button className="primary full" type="submit" disabled={paying}>
+            {paying
+              ? "Saving payment..."
+              : pendingRequest
+                ? "Retry payment safely"
+                : "Confirm payment"}
+            {!paying && <CheckCircle size={21} />}
+          </button>
+          <p className="checkout-hint">
+            Confirm once you have received the cash.
+          </p>
+        </form>
       </Modal>
       <Modal
         open={receiptOpen && !!receipt}
-        onClose={() => setReceiptOpen(false)}
-        title="Payment successful!"
-        description="All settled. Your next happy customer is waiting."
-        className="receipt-modal"
+        onClose={() => {
+          setReceiptOpen(false);
+          setShowPaymentSuccess(false);
+        }}
+        title={showPaymentSuccess ? "Payment successful!" : "Your receipt"}
+        description={
+          showPaymentSuccess
+            ? "Your order is saved. Your next happy customer awaits."
+            : "A saved copy of your completed order."
+        }
+        className={
+          showPaymentSuccess ? "payment-success-modal" : "receipt-modal"
+        }
+        role={showPaymentSuccess ? "alertdialog" : "dialog"}
+        icon={
+          showPaymentSuccess ? (
+            <div className="payment-success-mark" aria-hidden="true">
+              <span>
+                <Check size={34} weight="bold" />
+              </span>
+            </div>
+          ) : undefined
+        }
       >
-        {receipt && (
-          <>
-            <div className="success-banner">
-              <CheckCircle size={24} weight="fill" />
-              <div>
-                <strong>Return {money(receipt.change)} change</strong>
-                <span>Received {money(receipt.paid)} in cash</span>
+        {receipt &&
+          (showPaymentSuccess ? (
+            <PaymentSuccess
+              receipt={receipt}
+              onViewReceipt={() => setShowPaymentSuccess(false)}
+              onNewTransaction={resetTransaction}
+            />
+          ) : (
+            <>
+              <div className="success-banner">
+                <CheckCircle size={24} weight="fill" />
+                <div>
+                  <strong>Return {money(receipt.change)} change</strong>
+                  <span>Received {money(receipt.paid)} in cash</span>
+                </div>
               </div>
-            </div>
-            <DigitalReceipt receipt={receipt} />
-            <div className="receipt-actions">
-              <button className="secondary" onClick={() => window.print()}>
-                <Printer size={19} />
-                Print receipt
-              </button>
-              <button className="primary" onClick={resetTransaction}>
-                New transaction
-                <ArrowRight size={19} />
-              </button>
-            </div>
-          </>
-        )}
+              <DigitalReceipt receipt={receipt} />
+              <div className="receipt-actions">
+                <button className="secondary" onClick={() => window.print()}>
+                  <Printer size={19} />
+                  Print receipt
+                </button>
+                <button className="primary" onClick={resetTransaction}>
+                  New transaction
+                  <ArrowRight size={19} />
+                </button>
+              </div>
+            </>
+          ))}
       </Modal>
       <Modal
         open={!!historyReceipt}

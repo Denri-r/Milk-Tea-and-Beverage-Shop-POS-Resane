@@ -56,43 +56,36 @@ test("all required cart, payment, receipt, and reset features work in the browse
   await page
     .getByRole("button", { name: "Confirm payment", exact: true })
     .click();
-  const confirmation = page.getByRole("alertdialog", {
-    name: "Confirm this order?",
+  const success = page.getByRole("alertdialog", {
+    name: "Payment successful!",
   });
-  await expect(confirmation).toBeVisible();
-  await expect(confirmation.locator(".confirmation-total")).toContainText(
+  await expect(success).toBeVisible();
+  await expect(success.locator(".success-change")).toContainText("₱21.50");
+  await expect(success.locator(".success-payment-details")).toContainText(
     "₱79.00",
   );
-  await expect(confirmation.locator(".confirmation-amounts")).toContainText(
+  await expect(success.locator(".success-payment-details")).toContainText(
     "₱100.50",
   );
-  await expect(confirmation.locator(".confirmation-amounts")).toContainText(
-    "₱21.50",
+  await expect(success.locator(".success-reference")).toContainText(
+    /CC-\d{8}-\d{5}/,
   );
+  await expect(page.locator("#digital-receipt")).toHaveCount(0);
   await expect(
-    confirmation.getByRole("button", { name: "Go back" }),
+    success.getByRole("button", { name: "View receipt" }),
   ).toBeFocused();
-  await page.screenshot({ path: "artifacts/confirmation-desktop.png" });
+  expect(await (await page.request.get("/api/orders")).json()).toHaveLength(1);
+  await page.screenshot({ path: "artifacts/payment-success-desktop.png" });
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.screenshot({ path: "artifacts/confirmation-mobile.png" });
+  await page.screenshot({ path: "artifacts/payment-success-mobile.png" });
   await expect(
-    confirmation.getByRole("button", { name: "Confirm payment" }),
+    success.getByRole("button", { name: "New transaction" }),
   ).toBeInViewport();
-  await confirmation.getByRole("button", { name: "Go back" }).click();
-  await expect(page.getByLabel("Cash received", { exact: true })).toHaveValue(
-    "100.50",
-  );
-  expect(await (await page.request.get("/api/orders")).json()).toEqual([]);
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await page
-    .getByRole("button", { name: "Confirm payment", exact: true })
+  await success
+    .getByRole("button", { name: "View receipt", exact: true })
     .click();
-  await confirmation
-    .getByRole("button", { name: "Confirm payment", exact: true })
-    .click();
-  await expect(
-    page.getByRole("heading", { name: "Payment successful!" }),
-  ).toBeVisible();
+  await expect(success).toHaveCount(0);
   const receipt = page.locator("#digital-receipt");
   await expect(receipt).toContainText("Classic Milk Tea");
   await expect(receipt).toContainText("Bottled Water");
@@ -134,6 +127,32 @@ test("all required cart, payment, receipt, and reset features work in the browse
     .getByRole("button", { name: "Sales overview", exact: true })
     .click();
   await expect(page.locator(".stat-grid")).toContainText("₱79.00");
+
+  // The success alert also supports starting fresh without opening the receipt.
+  await page
+    .getByRole("button", { name: "Point of sale", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Switch to dark mode" }).click();
+  await page
+    .getByRole("button", { name: "Add Bottled Water", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Charge ₱20.00", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Exact amount", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Confirm payment", exact: true })
+    .click();
+  await expect(success).toBeVisible();
+  await expect(success.locator(".success-change")).toContainText("₱0.00");
+  await expect(success).toContainText("Exact amount received");
+  await page.screenshot({ path: "artifacts/payment-success-dark.png" });
+  await success
+    .getByRole("button", { name: "New transaction", exact: true })
+    .click();
+  await expect(success).toHaveCount(0);
+  await expect(page.getByTestId("order-total")).toHaveText("₱0.00");
+  await expect(page.locator("#digital-receipt")).toHaveCount(0);
   expect(pageErrors).toEqual([]);
 });
 

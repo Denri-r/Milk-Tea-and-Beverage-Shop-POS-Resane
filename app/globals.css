@@ -1213,128 +1213,153 @@ input::placeholder {
   border-color: var(--green);
   font-weight: 700;
 }
-.confirmation-modal .modal-heading {
+.modal.payment-success-modal {
+  width: 460px;
+  padding: 32px 28px 28px;
+  border-radius: 20px;
+}
+.payment-success-modal .modal-heading {
+  display: block;
+  text-align: center;
   margin-bottom: 25px;
 }
-.confirmation-order {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 22px;
+.payment-success-modal .modal-heading h2 {
+  font-size: 27px;
+  letter-spacing: -1px;
 }
-.confirmation-icon {
-  width: 50px;
-  height: 50px;
-  border-radius: 14px;
+.payment-success-modal .modal-heading p {
+  max-width: 290px;
+  margin: 8px auto 0;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.payment-success-modal .modal-heading > .icon-button {
+  position: absolute;
+  top: 17px;
+  right: 17px;
+  margin: 0;
+}
+.payment-success-mark {
   display: grid;
   place-items: center;
+  width: 84px;
+  height: 84px;
+  margin: 0 auto 22px;
+  border-radius: 50%;
   background: var(--green-soft);
+  border: 1px solid var(--border);
+}
+.payment-success-mark > span {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  color: var(--surface);
+  background: var(--green);
+}
+.success-change {
+  text-align: center;
+  background: var(--green-soft);
+  border-radius: 12px;
+  padding: 21px 16px;
+}
+.success-change > span {
+  font-size: 12px;
+  font-weight: 600;
   color: var(--green);
-  flex-shrink: 0;
 }
-.confirmation-order > div {
-  min-width: 0;
-  flex: 1;
-}
-.confirmation-order strong {
+.success-change > strong {
   display: block;
-  font-size: 13px;
+  font-size: clamp(32px, 8vw, 46px);
+  font-weight: 800;
+  letter-spacing: -1.8px;
+  line-height: 1.3;
+  margin-top: 6px;
+  color: var(--green);
+  font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
 }
-.confirmation-order div > span {
-  display: block;
-  margin-top: 5px;
+.success-change > p {
+  margin-top: 6px;
+  color: var(--muted);
   font-size: 11px;
-  color: var(--muted);
+  line-height: 1.7;
 }
-.confirmation-method {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 11px;
-  color: var(--muted);
-}
-.confirmation-summary {
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--bg);
-  padding: 22px;
-}
-.confirmation-total {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-.confirmation-total > span {
-  font-size: 12px;
-  color: var(--muted);
-}
-.confirmation-total strong {
-  font-size: 32px;
-  letter-spacing: -1px;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-}
-.confirmation-amounts {
+.success-payment-details {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  margin: 19px 0 0;
-  padding-top: 19px;
-  border-top: 1px dashed var(--border);
+  gap: 14px;
+  margin: 22px 0 20px;
+  text-align: center;
 }
-.confirmation-amounts dt {
+.success-payment-details > div + div {
+  border-left: 1px solid var(--border);
+  padding-left: 14px;
+}
+.success-payment-details dt {
   font-size: 11px;
   color: var(--muted);
 }
-.confirmation-amounts dd {
+.success-payment-details dd {
   margin: 7px 0 0;
-  font-size: 19px;
+  font-size: 17px;
   font-weight: 800;
   letter-spacing: -0.4px;
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
 }
-.confirmation-amounts > div:last-child dd {
-  color: var(--green);
-}
-.confirmation-note {
+.success-reference {
   display: flex;
-  align-items: flex-start;
-  gap: 9px;
-  margin-top: 20px;
-  font-size: 11px;
-  line-height: 1.8;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-top: 1px dashed var(--border);
+  padding-top: 15px;
+  font-size: 10px;
   color: var(--muted);
 }
-.confirmation-note svg {
-  flex-shrink: 0;
-  margin-top: 2px;
-  color: var(--green);
-}
-.confirmation-buttons {
+.success-actions {
   display: grid;
-  grid-template-columns: 1fr 1.4fr;
+  grid-template-columns: 1fr 1.2fr;
   gap: 10px;
-  margin-top: 25px;
+  margin-top: 24px;
 }
-.confirmation-buttons button {
-  height: 46px;
+.success-actions > button {
+  height: 47px;
   padding: 0 10px;
-  font-size: 12px;
   gap: 7px;
+  font-size: 11px;
 }
-@media (max-width: 380px) {
-  .confirmation-buttons {
-    grid-template-columns: 1fr;
+@media (prefers-reduced-motion: no-preference) {
+  .payment-success-mark > span {
+    animation: payment-saved 260ms ease-out both;
   }
-  .confirmation-total strong {
-    font-size: 28px;
+  @keyframes payment-saved {
+    from {
+      opacity: 0;
+      transform: scale(0.8);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
   }
-  .confirmation-amounts {
+}
+@media (max-width: 400px) {
+  .modal.payment-success-modal {
+    padding: 28px 20px 22px;
+  }
+  .payment-success-modal .modal-heading h2 {
+    font-size: 25px;
+  }
+  .success-actions {
     grid-template-columns: 1fr;
+    gap: 9px;
+  }
+  .success-actions > button {
+    height: 44px;
+    font-size: 12px;
   }
 }
 .payment-total {
